@@ -84,6 +84,9 @@ const elements = {
   monthlyPnl: document.getElementById("monthly-pnl"),
   winRate: document.getElementById("win-rate"),
   tradeCount: document.getElementById("trade-count"),
+  grossProfit: document.getElementById("gross-profit"),
+  grossLoss: document.getElementById("gross-loss"),
+  profitFactor: document.getElementById("profit-factor"),
   goalProgressLabel: document.getElementById("goal-progress-label"),
   goalProgressTrack: document.getElementById("goal-progress-track"),
   goalProgressFill: document.getElementById("goal-progress-fill"),
@@ -667,11 +670,14 @@ function renderDashboard() {
   const currentMonthTrades = trades.filter(
     (trade) => getLocalMonthKey(new Date(trade.date)) === currentMonthKey,
   );
-  const totalPnl = trades.reduce((total, trade) => total + trade.pnl, 0);
   const monthlyPnl = currentMonthTrades.reduce((total, trade) => total + trade.pnl, 0);
-  const closedTrades = trades.filter((trade) => trade.pnl !== 0);
-  const winningTrades = closedTrades.filter((trade) => trade.pnl > 0).length;
-  const winRate = closedTrades.length === 0 ? 0 : (winningTrades / closedTrades.length) * 100;
+  const winningTrades = trades.filter((trade) => trade.pnl > 0);
+  const losingTrades = trades.filter((trade) => trade.pnl < 0);
+  const grossProfit = winningTrades.reduce((total, trade) => total + trade.pnl, 0);
+  const grossLoss = losingTrades.reduce((total, trade) => total + Math.abs(trade.pnl), 0);
+  const winRate = trades.length === 0 ? 0 : (winningTrades.length / trades.length) * 100;
+  const profitFactor =
+    grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Number.POSITIVE_INFINITY : null;
   const currentCapital = getCurrentCapital();
   const monthlyTarget = baseCapital * 0.15;
   const progress = monthlyTarget > 0 ? (monthlyPnl / monthlyTarget) * 100 : 0;
@@ -689,7 +695,14 @@ function renderDashboard() {
   elements.monthlyPnl.textContent = formatCurrency(monthlyPnl);
   setSignedClass(elements.monthlyPnl, monthlyPnl);
   elements.winRate.textContent = `${winRate.toFixed(1)}%`;
-  elements.tradeCount.textContent = `${closedTrades.length} operaciones cerradas`;
+  elements.tradeCount.textContent = `${trades.length} operaciones registradas`;
+  elements.grossProfit.textContent = formatCurrency(grossProfit);
+  elements.grossLoss.textContent =
+    grossLoss > 0 ? `−${formatCurrency(grossLoss)}` : formatCurrency(0);
+  elements.profitFactor.textContent =
+    profitFactor === null ? "—" : Number.isFinite(profitFactor) ? `${profitFactor.toFixed(2)}×` : "∞";
+  setSignedClass(elements.grossProfit, grossProfit);
+  setSignedClass(elements.grossLoss, -grossLoss);
   elements.goalProgressLabel.textContent = `${Math.max(0, progress).toFixed(1)}%`;
   elements.goalProgressTrack.setAttribute("aria-valuenow", displayedProgress.toFixed(1));
   elements.goalProgressFill.style.width = `${displayedProgress}%`;
@@ -716,11 +729,10 @@ function formatRadarPrice(value) {
 }
 
 function getHistoricalSuccessEstimate() {
-  const closedTrades = trades.filter((trade) => trade.pnl !== 0);
-  const wins = closedTrades.filter((trade) => trade.pnl > 0).length;
+  const wins = trades.filter((trade) => trade.pnl > 0).length;
   return {
-    percentage: ((wins + 2) / (closedTrades.length + 4)) * 100,
-    sampleSize: closedTrades.length,
+    percentage: ((wins + 2) / (trades.length + 4)) * 100,
+    sampleSize: trades.length,
   };
 }
 
@@ -1831,9 +1843,8 @@ function renderPatternStats() {
     const patternTrades = trades.filter(
       (trade) => (trade.pattern?.trim() || "Sin categoría") === pattern,
     );
-    const closedTrades = patternTrades.filter((trade) => trade.pnl !== 0);
-    const wins = closedTrades.filter((trade) => trade.pnl > 0).length;
-    const winRate = closedTrades.length === 0 ? 0 : (wins / closedTrades.length) * 100;
+    const wins = patternTrades.filter((trade) => trade.pnl > 0).length;
+    const winRate = patternTrades.length === 0 ? 0 : (wins / patternTrades.length) * 100;
     const totalPnl = patternTrades.reduce((total, trade) => total + trade.pnl, 0);
     const row = document.createElement("tr");
     const patternCell = document.createElement("td");
