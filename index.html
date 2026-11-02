@@ -177,7 +177,7 @@
                   id="withdrawal-destination"
                   class="text-input"
                   type="text"
-                  maxlength="120"
+                  maxlength="210"
                   placeholder="Etiqueta o dirección de destino"
                 />
               </div>
@@ -608,6 +608,80 @@
             <p class="discord-webhook-note" id="discord-webhook-note">
               Las URLs son credenciales: se ocultan y se guardan en localStorage de este navegador
               (sin cifrar). No las compartas; al vaciar un campo y guardarlo se desactiva ese canal.
+            </p>
+          </section>
+
+          <section class="card auto-scan-card" aria-labelledby="auto-scan-title" id="automatic-scan">
+            <div class="auto-scan-header">
+              <div>
+                <p class="eyebrow">LECTURA PERIÓDICA · SIN ÓRDENES AUTOMÁTICAS</p>
+                <h2 id="auto-scan-title">Escaneo automático de mercado</h2>
+                <p class="section-description">
+                  Consulta velas públicas Spot y USDⓈ-M de Binance. Las señales comunes van al webhook
+                  Radar; Francotirador solo notifica configuraciones ≥ 80/100.
+                </p>
+              </div>
+              <span class="auto-scan-indicator" id="auto-scan-indicator" aria-hidden="true"></span>
+            </div>
+            <form class="auto-scan-settings" id="auto-scan-form">
+              <div class="auto-scan-symbols">
+                <label class="field-label" for="auto-scan-symbols">Pares a escanear (separados por coma)</label>
+                <input
+                  class="text-input"
+                  id="auto-scan-symbols"
+                  type="text"
+                  maxlength="120"
+                  value="BTCUSDT, ETHUSDT, SOLUSDT"
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  spellcheck="false"
+                  aria-describedby="auto-scan-note"
+                  required
+                />
+              </div>
+              <div>
+                <label class="field-label" for="auto-scan-interval">Frecuencia</label>
+                <select class="text-input" id="auto-scan-interval">
+                  <option value="1">Cada 1 minuto</option>
+                  <option value="5" selected>Cada 5 minutos</option>
+                  <option value="15">Cada 15 minutos</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="auto-scan-radar-timeframe">Marco Radar Spot</label>
+                <select class="text-input" id="auto-scan-radar-timeframe">
+                  <option value="5m">5 minutos</option>
+                  <option value="15m" selected>15 minutos</option>
+                  <option value="1h">1 hora</option>
+                  <option value="4h">4 horas</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="auto-scan-futures-timeframe">Marco Francotirador</label>
+                <select class="text-input" id="auto-scan-futures-timeframe">
+                  <option value="1h" selected>1 hora</option>
+                  <option value="4h">4 horas</option>
+                </select>
+              </div>
+              <button class="button button-secondary auto-scan-save" type="submit">
+                Guardar configuración
+              </button>
+              <button
+                class="button button-primary auto-scan-toggle"
+                id="auto-scan-toggle"
+                type="button"
+                aria-pressed="false"
+              >
+                Activar escaneo automático
+              </button>
+            </form>
+            <p class="auto-scan-note" id="auto-scan-note">
+              Máximo 10 pares. El escaneo empieza al activarlo, después repite el intervalo tras terminar
+              cada ciclo. Las alertas se deduplican por mercado, par, marco y vela cerrada; la pestaña
+              debe permanecer abierta.
+            </p>
+            <p class="auto-scan-status" id="auto-scan-status" role="status" aria-live="polite">
+              Escaneo detenido. No se realizan consultas en segundo plano.
             </p>
           </section>
 

@@ -1162,6 +1162,120 @@ h1 {
   line-height: 1.6;
 }
 
+.auto-scan-card {
+  min-width: 0;
+  margin-bottom: 15px;
+  padding: 19px 20px;
+  border-color: #263d43;
+  background:
+    radial-gradient(ellipse at 100% 0, rgb(61 217 235 / 6%), transparent 24rem),
+    linear-gradient(145deg, #141a1d, #11151a 58%);
+}
+
+.auto-scan-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+
+.auto-scan-header h2 {
+  margin: 0 0 5px;
+  color: #dce8e9;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.2px;
+}
+
+.auto-scan-header .eyebrow {
+  color: #79b4bd;
+}
+
+.auto-scan-indicator {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  margin: 5px 3px 0 0;
+  border: 1px solid #53616a;
+  border-radius: 50%;
+  background: #39434a;
+}
+
+.auto-scan-card.is-active .auto-scan-indicator,
+.auto-scan-card.is-scanning .auto-scan-indicator {
+  border-color: #51ddc2;
+  background: #27d99a;
+  box-shadow: 0 0 12px rgb(39 217 154 / 55%);
+}
+
+.auto-scan-settings {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.5fr) repeat(3, minmax(120px, 0.8fr));
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #28373b;
+  border-radius: 8px;
+  background: #0f1417;
+}
+
+.auto-scan-settings > div {
+  min-width: 0;
+}
+
+.auto-scan-symbols {
+  grid-column: span 2;
+}
+
+.auto-scan-save,
+.auto-scan-toggle {
+  width: 100%;
+  min-height: 36px;
+  white-space: normal;
+}
+
+.auto-scan-save {
+  border-color: #31505a;
+}
+
+.auto-scan-toggle {
+  border-color: #32726b;
+  background: #1b8c76;
+  color: #ecfff9;
+}
+
+.auto-scan-toggle:hover {
+  border-color: #55b79f;
+  background: #22a48a;
+}
+
+.auto-scan-toggle.is-active {
+  border-color: #74434c;
+  background: #592a34;
+  color: #ffe6e9;
+}
+
+.auto-scan-toggle.is-active:hover {
+  border-color: #a75a68;
+  background: #703541;
+}
+
+.auto-scan-note {
+  margin: 9px 0 0;
+  color: #82909a;
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+.auto-scan-status {
+  min-height: 16px;
+  margin: 8px 0 0;
+  color: #a7bdc1;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
 .radar-header,
 .radar-signal-heading {
   display: flex;
@@ -2266,6 +2380,14 @@ td:first-child {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .auto-scan-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .auto-scan-symbols {
+    grid-column: 1 / -1;
+  }
+
   .discord-webhook-actions .button {
     min-height: 34px;
     font-size: 8px;
@@ -2298,6 +2420,18 @@ td:first-child {
 
   .discord-settings {
     padding: 16px;
+  }
+
+  .auto-scan-card {
+    padding: 16px;
+  }
+
+  .auto-scan-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auto-scan-symbols {
+    grid-column: auto;
   }
 
   .discord-webhook-channel {

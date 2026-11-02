@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   discordRadarWebhook: "oraculo.discordRadarWebhook",
   discordFuturesWebhook: "oraculo.discordFuturesWebhook",
   legacyDiscordWebhook: "oraculo.discordWebhook",
+  autoScanConfig: "oraculo.autoScanConfig",
 };
 
 const TRADE_PATTERNS = [
@@ -49,6 +50,14 @@ const DAILY_TRADE_LIMIT = 3;
 const SESSION_TRADE_LIMIT = 2;
 const FUTURES_MINIMUM_SCORE = 80;
 const DISCORD_ALERT_THRESHOLD = 80;
+const MAX_AUTO_SCAN_SYMBOLS = 10;
+const AUTO_SCAN_INTERVALS = [1, 5, 15];
+const DEFAULT_AUTO_SCAN_CONFIG = {
+  symbols: ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+  intervalMinutes: 5,
+  radarTimeframe: "15m",
+  futuresTimeframe: "1h",
+};
 const MARKET_ORDER_TYPE = "Orden de Mercado (Entrada inmediata)";
 const SMART_MONEY_REMINDER =
   "Filosofía Smart Money: Menos indicadores saturados, más enfoque en estructura, Order Blocks y gestión estricta del riesgo.";
@@ -183,6 +192,14 @@ const elements = {
   discordFuturesWebhookInput: document.getElementById("discord-futures-webhook-url"),
   discordFuturesWebhookTest: document.getElementById("discord-futures-webhook-test"),
   discordFuturesWebhookStatus: document.getElementById("discord-futures-webhook-status"),
+  autoScanCard: document.getElementById("automatic-scan"),
+  autoScanForm: document.getElementById("auto-scan-form"),
+  autoScanSymbols: document.getElementById("auto-scan-symbols"),
+  autoScanInterval: document.getElementById("auto-scan-interval"),
+  autoScanRadarTimeframe: document.getElementById("auto-scan-radar-timeframe"),
+  autoScanFuturesTimeframe: document.getElementById("auto-scan-futures-timeframe"),
+  autoScanToggle: document.getElementById("auto-scan-toggle"),
+  autoScanStatus: document.getElementById("auto-scan-status"),
 };
 
 const radarChartView = {
@@ -240,11 +257,20 @@ let discordFuturesWebhookUrl = loadDiscordWebhook(
   elements.discordFuturesWebhookStatus,
   false,
 );
+let autoScanConfig = loadAutoScanConfig();
+let autoScanTimeoutId = null;
+let autoScanRunning = false;
+let autoScanInProgress = false;
+const autoScanAlertKeys = new Set();
 let activeMarketSession = null;
 let latestRadarSignal = null;
 let latestMarketSnapshot = null;
 elements.discordRadarWebhookInput.value = discordRadarWebhookUrl;
 elements.discordFuturesWebhookInput.value = discordFuturesWebhookUrl;
+elements.autoScanSymbols.value = autoScanConfig.symbols.join(", ");
+elements.autoScanInterval.value = String(autoScanConfig.intervalMinutes);
+elements.autoScanRadarTimeframe.value = autoScanConfig.radarTimeframe;
+elements.autoScanFuturesTimeframe.value = autoScanConfig.futuresTimeframe;
 if (!elements.discordRadarWebhookStatus.textContent) {
   elements.discordRadarWebhookStatus.textContent = discordRadarWebhookUrl
     ? "Webhook de Radar General guardado en este navegador."
@@ -254,6 +280,10 @@ if (!elements.discordFuturesWebhookStatus.textContent) {
   elements.discordFuturesWebhookStatus.textContent = discordFuturesWebhookUrl
     ? "Webhook de Francotirador guardado en este navegador."
     : "No hay webhook configurado para el Francotirador.";
+}
+if (!elements.autoScanStatus.textContent) {
+  elements.autoScanStatus.textContent =
+    "Escaneo detenido. No se realizan consultas en segundo plano.";
 }
 
 function formatCurrency(value) {
@@ -436,6 +466,66 @@ function saveDiscordWebhook(value, storageKey, statusElement) {
   } catch (error) {
     statusElement.textContent =
       `No se pudo guardar el webhook: ${error.message}`;
+    return false;
+  }
+}
+
+function validateAutoScanConfig(config) {
+  const symbols = Array.isArray(config.symbols)
+    ? config.symbols
+    : String(config.symbols || "")
+        .split(",")
+        .map((symbol) => symbol.trim().toUpperCase())
+        .filter(Boolean);
+  const normalizedSymbols = [...new Set(symbols.map((symbol) => String(symbol).trim().toUpperCase()))];
+  if (
+    normalizedSymbols.length === 0 ||
+    normalizedSymbols.length > MAX_AUTO_SCAN_SYMBOLS ||
+    normalizedSymbols.some((symbol) => !/^[A-Z0-9]{5,20}$/.test(symbol))
+  ) {
+    throw new Error(`Ingresa de 1 a ${MAX_AUTO_SCAN_SYMBOLS} pares válidos, separados por comas (por ejemplo BTCUSDT, ETHUSDT).`);
+  }
+
+  const intervalMinutes = Number(config.intervalMinutes);
+  if (!AUTO_SCAN_INTERVALS.includes(intervalMinutes)) {
+    throw new Error("La frecuencia debe ser 1, 5 o 15 minutos.");
+  }
+  if (!["5m", "15m", "1h", "4h"].includes(config.radarTimeframe)) {
+    throw new Error("La temporalidad del Radar Spot no es válida.");
+  }
+  if (!["1h", "4h"].includes(config.futuresTimeframe)) {
+    throw new Error("La temporalidad del Francotirador debe ser 1h o 4h.");
+  }
+
+  return {
+    symbols: normalizedSymbols,
+    intervalMinutes,
+    radarTimeframe: config.radarTimeframe,
+    futuresTimeframe: config.futuresTimeframe,
+  };
+}
+
+function loadAutoScanConfig() {
+  try {
+    const storedConfig = localStorage.getItem(STORAGE_KEYS.autoScanConfig);
+    return storedConfig
+      ? validateAutoScanConfig(JSON.parse(storedConfig))
+      : { ...DEFAULT_AUTO_SCAN_CONFIG, symbols: [...DEFAULT_AUTO_SCAN_CONFIG.symbols] };
+  } catch (error) {
+    elements.autoScanStatus.textContent =
+      `No se pudo cargar la configuración del escaneo: ${error.message} Se usarán los valores predeterminados.`;
+    return { ...DEFAULT_AUTO_SCAN_CONFIG, symbols: [...DEFAULT_AUTO_SCAN_CONFIG.symbols] };
+  }
+}
+
+function saveAutoScanConfig(config) {
+  try {
+    const validatedConfig = validateAutoScanConfig(config);
+    localStorage.setItem(STORAGE_KEYS.autoScanConfig, JSON.stringify(validatedConfig));
+    autoScanConfig = validatedConfig;
+    return true;
+  } catch (error) {
+    elements.autoScanStatus.textContent = `No se pudo guardar la configuración: ${error.message}`;
     return false;
   }
 }
@@ -1492,6 +1582,217 @@ async function fetchBinanceFuturesCandles(symbol, timeframe) {
   return requestBinanceKlines(endpoint, "USDⓈ-M Futures");
 }
 
+function getLatestClosedCandleId(candles) {
+  for (let index = candles.length - 1; index >= 0; index -= 1) {
+    const candle = normalizeCandle(candles[index]);
+    if (candle && candle.isClosed !== false) {
+      return String(candle.closeTime ?? candle.time);
+    }
+  }
+  return "sin-vela-cerrada";
+}
+
+async function dispatchAutoScanAlert({
+  market,
+  symbol,
+  timeframe,
+  candles,
+  signal,
+  details,
+  webhookUrl,
+  statusElement,
+}) {
+  if (!webhookUrl) {
+    return "sin-webhook";
+  }
+
+  const alertKey = [
+    market,
+    symbol,
+    timeframe,
+    getLatestClosedCandleId(candles),
+    signal.direction,
+  ].join(":");
+  if (autoScanAlertKeys.has(alertKey)) {
+    return "duplicada";
+  }
+
+  const sent = await sendDiscordEmbed(
+    createDiscordSignalEmbed(signal, details),
+    webhookUrl,
+    `Escaneo automático · ${symbol}`,
+    statusElement,
+  );
+  if (sent) {
+    autoScanAlertKeys.add(alertKey);
+    if (autoScanAlertKeys.size > 500) {
+      autoScanAlertKeys.delete(autoScanAlertKeys.values().next().value);
+    }
+  }
+  return sent ? "enviada" : "fallida";
+}
+
+function scheduleNextAutoScan() {
+  if (!autoScanRunning) {
+    return;
+  }
+  autoScanTimeoutId = globalThis.setTimeout(
+    () => void runAutoScan(),
+    autoScanConfig.intervalMinutes * 60_000,
+  );
+}
+
+async function runAutoScan() {
+  if (!autoScanRunning || autoScanInProgress) {
+    return;
+  }
+
+  autoScanInProgress = true;
+  const config = {
+    ...autoScanConfig,
+    symbols: [...autoScanConfig.symbols],
+  };
+  const summary = {
+    spotSignals: 0,
+    futuresSignals: 0,
+    alertsSent: 0,
+    alertFailures: 0,
+    duplicates: 0,
+    missingWebhooks: 0,
+    errors: [],
+  };
+  elements.autoScanCard.classList.add("is-scanning");
+  elements.autoScanStatus.textContent =
+    `Escaneando ${config.symbols.length} ${config.symbols.length === 1 ? "par" : "pares"}: ` +
+    `${config.symbols.join(", ")} · ciclo iniciado ${new Intl.DateTimeFormat("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(new Date())}.`;
+
+  try {
+    for (const symbol of config.symbols) {
+      if (!autoScanRunning) {
+        break;
+      }
+
+      try {
+        const candles = await fetchBinanceCandles(symbol, config.radarTimeframe);
+        if (!autoScanRunning) {
+          break;
+        }
+        const normalizedCandles = candles.map(normalizeCandle);
+        if (normalizedCandles.some((candle) => candle === null)) {
+          throw new Error("Binance Spot devolvió una o más velas OHLC inválidas.");
+        }
+        const setup = analyzeOpportunity(normalizedCandles);
+        if (setup.direction) {
+          summary.spotSignals += 1;
+          const estimate = getHistoricalSuccessEstimate();
+          const result = await dispatchAutoScanAlert({
+            market: "spot",
+            symbol,
+            timeframe: config.radarTimeframe,
+            candles,
+            signal: setup,
+            details: {
+              type: "radar",
+              score: estimate.percentage,
+              sampleSize: estimate.sampleSize,
+              symbol,
+              timeframe: config.radarTimeframe,
+              market: "Binance Spot · Escaneo automático",
+            },
+            webhookUrl: discordRadarWebhookUrl,
+            statusElement: elements.discordRadarWebhookStatus,
+          });
+          if (result === "enviada") summary.alertsSent += 1;
+          if (result === "fallida") summary.alertFailures += 1;
+          if (result === "duplicada") summary.duplicates += 1;
+          if (result === "sin-webhook") summary.missingWebhooks += 1;
+        }
+      } catch (error) {
+        summary.errors.push(`${symbol} Spot: ${error.message}`);
+      }
+
+      if (!autoScanRunning) {
+        break;
+      }
+
+      try {
+        const candles = await fetchBinanceFuturesCandles(symbol, config.futuresTimeframe);
+        if (!autoScanRunning) {
+          break;
+        }
+        const setup = analyzeFuturesCandles(candles, config.futuresTimeframe);
+        if (setup.active && setup.score >= FUTURES_MINIMUM_SCORE) {
+          summary.futuresSignals += 1;
+          const result = await dispatchAutoScanAlert({
+            market: "futures",
+            symbol,
+            timeframe: config.futuresTimeframe,
+            candles,
+            signal: setup,
+            details: {
+              type: "futures",
+              score: setup.score,
+              symbol,
+              timeframe: config.futuresTimeframe,
+              market: "Binance USDⓈ-M Futures · Escaneo automático",
+            },
+            webhookUrl: discordFuturesWebhookUrl,
+            statusElement: elements.discordFuturesWebhookStatus,
+          });
+          if (result === "enviada") summary.alertsSent += 1;
+          if (result === "fallida") summary.alertFailures += 1;
+          if (result === "duplicada") summary.duplicates += 1;
+          if (result === "sin-webhook") summary.missingWebhooks += 1;
+        }
+      } catch (error) {
+        summary.errors.push(`${symbol} Futuros: ${error.message}`);
+      }
+    }
+
+    if (!autoScanRunning) {
+      return;
+    }
+
+    const parts = [
+      `Ciclo finalizado: ${summary.spotSignals} señal(es) Spot`,
+      `${summary.futuresSignals} configuración(es) Francotirador ≥ 80`,
+      `${summary.alertsSent} alerta(s) enviadas`,
+    ];
+    if (summary.duplicates > 0) {
+      parts.push(`${summary.duplicates} duplicado(s) bloqueados`);
+    }
+    if (summary.missingWebhooks > 0) {
+      parts.push(`${summary.missingWebhooks} señal(es) sin webhook configurado`);
+    }
+    if (summary.alertFailures > 0) {
+      parts.push(`${summary.alertFailures} fallo(s) de envío; revisa el estado de Discord`);
+    }
+    if (summary.errors.length > 0) {
+      parts.push(
+        `Errores: ${summary.errors.slice(0, 3).join(" · ")}${summary.errors.length > 3 ? " · …" : ""}`,
+      );
+    }
+    elements.autoScanStatus.textContent =
+      `${parts.join(" · ")}. Próximo ciclo en ${autoScanConfig.intervalMinutes} min.`;
+  } catch (error) {
+    if (autoScanRunning) {
+      elements.autoScanStatus.textContent =
+        `El ciclo automático no pudo completarse: ${error.message}. Se intentará de nuevo en ${autoScanConfig.intervalMinutes} min.`;
+    }
+  } finally {
+    autoScanInProgress = false;
+    if (autoScanRunning) {
+      scheduleNextAutoScan();
+    } else {
+      elements.autoScanCard.classList.remove("is-scanning");
+    }
+  }
+}
+
 function renderWithdrawals() {
   elements.withdrawalList.replaceChildren();
   elements.withdrawalEmpty.hidden = withdrawals.length > 0;
@@ -1774,6 +2075,64 @@ function updateRiskAssessment() {
 }
 
 elements.riskPercent.addEventListener("input", updateRiskAssessment);
+
+function getAutoScanFormConfig() {
+  return {
+    symbols: elements.autoScanSymbols.value,
+    intervalMinutes: elements.autoScanInterval.value,
+    radarTimeframe: elements.autoScanRadarTimeframe.value,
+    futuresTimeframe: elements.autoScanFuturesTimeframe.value,
+  };
+}
+
+function updateAutoScanToggle() {
+  elements.autoScanToggle.textContent = autoScanRunning
+    ? "Desactivar escaneo automático"
+    : "Activar escaneo automático";
+  elements.autoScanToggle.setAttribute("aria-pressed", String(autoScanRunning));
+  elements.autoScanToggle.classList.toggle("is-active", autoScanRunning);
+  elements.autoScanCard.classList.toggle("is-active", autoScanRunning);
+}
+
+elements.autoScanForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!saveAutoScanConfig(getAutoScanFormConfig())) {
+    return;
+  }
+  elements.autoScanSymbols.value = autoScanConfig.symbols.join(", ");
+  elements.autoScanStatus.textContent = autoScanRunning
+    ? "Configuración guardada. Se aplicará al terminar el ciclo actual."
+    : "Configuración del escaneo guardada en este navegador. El escaneo sigue detenido.";
+});
+
+elements.autoScanToggle.addEventListener("click", () => {
+  if (autoScanRunning) {
+    autoScanRunning = false;
+    if (autoScanTimeoutId !== null) {
+      globalThis.clearTimeout(autoScanTimeoutId);
+      autoScanTimeoutId = null;
+    }
+    updateAutoScanToggle();
+    if (autoScanInProgress) {
+      elements.autoScanStatus.textContent =
+        "Escaneo desactivado. Se detendrá después de terminar la consulta en curso.";
+    } else {
+      elements.autoScanCard.classList.remove("is-scanning");
+      elements.autoScanStatus.textContent =
+        "Escaneo detenido. No se realizan consultas en segundo plano.";
+    }
+    return;
+  }
+
+  if (!saveAutoScanConfig(getAutoScanFormConfig())) {
+    return;
+  }
+  elements.autoScanSymbols.value = autoScanConfig.symbols.join(", ");
+  autoScanRunning = true;
+  updateAutoScanToggle();
+  elements.autoScanStatus.textContent = "Escaneo automático activado. Iniciando primer ciclo…";
+  void runAutoScan();
+});
 
 elements.discordRadarWebhookForm.addEventListener("submit", (event) => {
   event.preventDefault();
