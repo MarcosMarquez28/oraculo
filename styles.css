@@ -15,6 +15,7 @@
   --blue: #638fff;
   --green: #27d99a;
   --red: #ff657a;
+  --sidebar-width: 238px;
 }
 
 * {
@@ -62,7 +63,7 @@ a {
   inset: 0 auto 0 0;
   z-index: 2;
   display: flex;
-  width: 238px;
+  width: var(--sidebar-width);
   flex-direction: column;
   padding: 27px 17px 20px;
   border-right: 1px solid #1b222a;
@@ -188,7 +189,8 @@ a {
 
 .main-content {
   min-height: 100vh;
-  margin-left: 238px;
+  min-width: 0;
+  margin-left: var(--sidebar-width);
 }
 
 .topbar {
@@ -259,7 +261,8 @@ a {
 }
 
 .page-content {
-  width: min(1120px, 100%);
+  width: min(1200px, 100%);
+  min-width: 0;
   margin: 0 auto;
   padding: 34px 42px 25px;
 }
@@ -1587,13 +1590,15 @@ h1 {
 
 .content-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  align-items: start;
+  gap: 24px;
   margin-bottom: 15px;
 }
 
 .panel-card {
-  padding: 19px;
+  min-width: 0;
+  padding: 24px;
 }
 
 .section-heading {
@@ -1679,8 +1684,8 @@ select.text-input {
 
 .field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 11px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .full-width {
@@ -1779,13 +1784,11 @@ select.text-input {
 }
 
 .capital-panel > .section-description {
-  min-height: 37px;
-  margin-top: -6px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .capital-panel .form-stack {
-  gap: 8px;
+  gap: 12px;
 }
 
 .saved-message {
@@ -2064,12 +2067,16 @@ td:first-child {
 }
 
 @media (max-width: 1050px) {
+  :root {
+    --sidebar-width: 205px;
+  }
+
   .sidebar {
-    width: 205px;
+    width: var(--sidebar-width);
   }
 
   .main-content {
-    margin-left: 205px;
+    margin-left: var(--sidebar-width);
   }
 
   .page-content {
@@ -2088,6 +2095,10 @@ td:first-child {
 }
 
 @media (max-width: 760px) {
+  :root {
+    --sidebar-width: 0px;
+  }
+
   .sidebar {
     position: static;
     width: 100%;
@@ -2145,12 +2156,14 @@ td:first-child {
     padding: 27px 20px 20px;
   }
 
-  .content-grid {
-    grid-template-columns: 1fr;
+  .panel-card {
+    padding: 20px;
   }
+}
 
-  .capital-panel > .section-description {
-    min-height: auto;
+@media (max-width: 960px) {
+  .content-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
