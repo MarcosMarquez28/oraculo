@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Oráculo: panel personal para gestionar capital, riesgo y operaciones de trading."
+    />
+    <title>Oráculo — Trading Journal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand" href="#" aria-label="Oráculo, inicio">
+          <span class="brand-mark" aria-hidden="true">O</span>
+          <span class="brand-name">ORÁCULO<span class="brand-dot">.</span></span>
+        </a>
+
+        <div class="sidebar-label">Workspace</div>
+        <nav class="main-nav">
+          <a class="nav-link active" href="#overview" aria-current="page">
+            <span class="nav-icon" aria-hidden="true">◫</span>
+            Resumen
+          </a>
+          <a class="nav-link" href="#risk-calculator">
+            <span class="nav-icon" aria-hidden="true">⌁</span>
+            Calculadora de riesgo
+          </a>
+          <a class="nav-link" href="#opportunity-radar">
+            <span class="nav-icon" aria-hidden="true">⌖</span>
+            Radar de oportunidades
+          </a>
+          <a class="nav-link" href="#futures-radar">
+            <span class="nav-icon" aria-hidden="true">⌁</span>
+            Modo francotirador
+          </a>
+          <a class="nav-link" href="#trading-log">
+            <span class="nav-icon" aria-hidden="true">▤</span>
+            Diario de operaciones
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="privacy-note">
+            <span class="privacy-dot" aria-hidden="true"></span>
+            <span>Datos guardados<br />en este dispositivo</span>
+          </div>
+          <span class="sidebar-version">ORÁCULO · PERSONAL</span>
+        </div>
+      </aside>
+
+      <main class="main-content" id="overview">
+        <header class="topbar">
+          <div class="breadcrumb">Workspace <span>/</span> Resumen</div>
+          <div class="topbar-right">
+            <span class="market-session" id="market-session" role="status" aria-live="polite"></span>
+            <span class="local-status"><span aria-hidden="true"></span> Solo local</span>
+            <div class="avatar" aria-label="Perfil de Oráculo">O</div>
+          </div>
+        </header>
+
+        <div class="page-content">
+          <section class="page-heading">
+            <div>
+              <p class="eyebrow">TU CENTRO DE CONTROL</p>
+              <h1>Resumen <span class="heading-period" id="current-month"></span></h1>
+              <p class="page-subtitle">Decisiones claras. Riesgo bajo control.</p>
+            </div>
+            <a class="button button-secondary" href="#trading-log">
+              <span aria-hidden="true">＋</span> Registrar operación
+            </a>
+          </section>
+
+          <aside class="cooldown-alert" id="cooldown-alert" role="status" aria-live="polite" hidden>
+            <span class="cooldown-icon" aria-hidden="true">!</span>
+            <div>
+              <strong>Alerta de disciplina · Pausa recomendada</strong>
+              <p>Las dos operaciones más recientes fueron pérdidas. Tómate un alto temporal antes de volver a operar.</p>
+            </div>
+          </aside>
+
+          <section class="session-trade-card" id="session-trade-card" aria-label="Límite de operaciones por sesión">
+            <div class="session-trade-summary">
+              <div>
+                <p class="eyebrow">DISCIPLINA DE SESIÓN</p>
+                <strong id="session-trade-count">0 de 2 operaciones</strong>
+                <span id="session-trade-label">Sesión actual</span>
+              </div>
+              <span class="session-trade-limit">Máximo sugerido: 2</span>
+            </div>
+            <div class="session-trade-track" role="progressbar" aria-label="Operaciones registradas en esta sesión" aria-valuemin="0" aria-valuemax="2" aria-valuenow="0">
+              <div class="session-trade-fill" id="session-trade-fill"></div>
+            </div>
+            <p class="session-trade-alert" id="session-trade-alert" role="status" aria-live="polite" hidden>
+              Límite sugerido alcanzado. Prioriza el plan y espera a la próxima sesión.
+            </p>
+          </section>
+
+          <section class="stats-grid" aria-label="Resumen de rendimiento">
+            <article class="card stat-card balance-card">
+              <div class="card-topline">
+                <span class="card-label">Capital actual</span>
+                <span class="stat-icon cyan-icon" aria-hidden="true">$</span>
+              </div>
+              <p class="stat-value" id="current-capital">$0.00</p>
+              <p class="stat-footnote">Capital base + PnL − retiros</p>
+            </article>
+            <article class="card stat-card">
+              <div class="card-topline">
+                <span class="card-label">PnL de este mes</span>
+                <span class="stat-icon green-icon" aria-hidden="true">↗</span>
+              </div>
+              <p class="stat-value" id="monthly-pnl">$0.00</p>
+              <p class="stat-footnote">Resultado de operaciones registradas</p>
+            </article>
+            <article class="card stat-card">
+              <div class="card-topline">
+                <span class="card-label">Win rate</span>
+                <span class="stat-icon blue-icon" aria-hidden="true">%</span>
+              </div>
+              <p class="stat-value" id="win-rate">0%</p>
+              <p class="stat-footnote" id="trade-count">0 operaciones cerradas</p>
+            </article>
+            <article class="card stat-card withdrawal-stat-card">
+              <div class="card-topline">
+                <span class="card-label">Total retirado</span>
+                <span class="stat-icon blue-icon" aria-hidden="true">↗</span>
+              </div>
+              <p class="stat-value" id="total-withdrawals">$0.00</p>
+              <p class="stat-footnote">Enviado a billeteras externas</p>
+            </article>
+          </section>
+
+          <section class="card withdrawals-card" aria-labelledby="withdrawals-title">
+            <div class="withdrawals-header">
+              <div>
+                <p class="eyebrow">GESTIÓN DE BENEFICIOS</p>
+                <h2 id="withdrawals-title">Retiros parciales · Págate a ti mismo</h2>
+                <p class="section-description">
+                  Registra retiros para diferenciar el capital de trabajo del dinero enviado a una billetera externa.
+                </p>
+              </div>
+              <span class="withdrawal-balance">
+                Capital de trabajo <strong id="withdrawal-working-capital">$0.00</strong>
+                Beneficio disponible <strong id="withdrawal-available-profit">$0.00</strong>
+              </span>
+            </div>
+            <form id="withdrawal-form" class="withdrawal-form">
+              <div>
+                <label class="field-label" for="withdrawal-amount">Importe del retiro</label>
+                <div class="input-with-suffix">
+                  <input
+                    id="withdrawal-amount"
+                    class="text-input"
+                    type="number"
+                    min="0.01"
+                    step="any"
+                    placeholder="Ej. 50"
+                    aria-describedby="withdrawal-error"
+                    required
+                  />
+                  <span>USDT</span>
+                </div>
+              </div>
+              <div>
+                <label class="field-label" for="withdrawal-destination">Billetera externa (opcional)</label>
+                <input
+                  id="withdrawal-destination"
+                  class="text-input"
+                  type="text"
+                  maxlength="120"
+                  placeholder="Etiqueta o dirección de destino"
+                />
+              </div>
+              <button class="button button-secondary withdrawal-submit" type="submit">
+                Registrar retiro
+              </button>
+            </form>
+            <p class="form-error withdrawal-error" id="withdrawal-error" role="alert"></p>
+            <div class="table-wrap withdrawal-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Destino</th>
+                    <th scope="col">Importe (USDT)</th>
+                  </tr>
+                </thead>
+                <tbody id="withdrawal-list"></tbody>
+              </table>
+              <p class="withdrawal-empty" id="withdrawal-empty">Aún no hay retiros registrados.</p>
+            </div>
+          </section>
+
+          <section class="card goal-card" aria-labelledby="goal-title">
+            <div class="goal-header">
+              <div>
+                <p class="eyebrow">OBJETIVO MENSUAL</p>
+                <h2 id="goal-title">Meta de crecimiento <span>+15%</span></h2>
+                <p class="section-description">
+                  Seguimiento del PnL mensual respecto a tu capital base.
+                </p>
+              </div>
+              <div class="goal-numbers">
+                <strong id="goal-progress-label">0%</strong>
+                <span>de la meta</span>
+              </div>
+            </div>
+            <div
+              class="progress-track"
+              id="goal-progress-track"
+              role="progressbar"
+              aria-label="Progreso de la meta mensual"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            >
+              <div class="progress-fill" id="goal-progress-fill"></div>
+            </div>
+            <div class="goal-footer">
+              <span id="goal-monthly-pnl">$0.00 ganados este mes</span>
+              <span>Meta: <strong id="goal-target">$0.00</strong></span>
+            </div>
+          </section>
+
+          <section class="card analytics-card" aria-labelledby="pattern-title">
+            <div class="analytics-header">
+              <div>
+                <p class="eyebrow">ENCUENTRA TU VENTAJA</p>
+                <h2 id="pattern-title">Rendimiento por patrón</h2>
+                <p class="section-description">
+                  Compara efectividad y PnL para identificar tus estrategias más consistentes.
+                </p>
+              </div>
+            </div>
+            <div class="table-wrap analytics-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Patrón</th>
+                    <th scope="col">Operaciones</th>
+                    <th scope="col">Win rate</th>
+                    <th scope="col">PnL total (USDT)</th>
+                  </tr>
+                </thead>
+                <tbody id="pattern-stats"></tbody>
+              </table>
+              <p class="analytics-empty" id="pattern-empty">
+                Registra operaciones con un patrón para ver aquí tus estadísticas.
+              </p>
+            </div>
+          </section>
+
+          <section class="card radar-card" id="opportunity-radar" aria-labelledby="radar-title">
+            <div class="radar-header">
+              <div>
+                <p class="eyebrow">LECTURA DE MERCADO · SIN ÓRDENES AUTOMÁTICAS</p>
+                <h2 id="radar-title">Radar / Alertas probabilísticas</h2>
+                <p class="section-description">
+                  Busca un impulso confirmado en velas cerradas. La señal propone una zona de retroceso; no persigas el precio.
+                </p>
+              </div>
+              <span class="section-icon" aria-hidden="true">⌖</span>
+            </div>
+            <form class="radar-controls" id="radar-form">
+              <div>
+                <label class="field-label" for="radar-symbol">Par de mercado</label>
+                <input
+                  class="text-input"
+                  id="radar-symbol"
+                  type="text"
+                  maxlength="20"
+                  value="BTCUSDT"
+                  autocomplete="off"
+                  aria-describedby="radar-source-note"
+                  required
+                />
+              </div>
+              <div>
+                <label class="field-label" for="radar-timeframe">Temporalidad</label>
+                <select class="text-input" id="radar-timeframe">
+                  <option value="5m">5 minutos</option>
+                  <option value="15m" selected>15 minutos</option>
+                  <option value="1h">1 hora</option>
+                  <option value="4h">4 horas</option>
+                </select>
+              </div>
+              <button class="button button-primary radar-submit" id="radar-submit" type="submit">
+                Analizar velas
+              </button>
+            </form>
+            <p class="radar-source-note" id="radar-source-note">
+              Consulta manual a velas públicas de Binance. Sin conexión continua ni envío de órdenes.
+            </p>
+            <div class="radar-simulator">
+              <div>
+                <label class="field-label" for="radar-simulation-direction">Escenario didáctico</label>
+                <select class="text-input" id="radar-simulation-direction">
+                  <option value="bullish">Impulso alcista</option>
+                  <option value="bearish">Impulso bajista</option>
+                </select>
+              </div>
+              <button
+                class="button button-secondary radar-simulate"
+                id="radar-simulate"
+                type="button"
+                aria-describedby="radar-simulation-note"
+              >
+                Forzar análisis / Simular escenario
+              </button>
+              <span class="radar-simulation-note" id="radar-simulation-note">
+                Genera velas sintéticas locales; no son precios reales ni envían órdenes.
+              </span>
+            </div>
+            <p class="radar-status" id="radar-status" role="status" aria-live="polite">
+              Aún no hay datos. Analiza un par para buscar una posible configuración.
+            </p>
+            <figure class="radar-chart" id="radar-chart" aria-labelledby="radar-chart-title" hidden>
+              <figcaption class="radar-chart-caption">
+                <div>
+                  <strong id="radar-chart-title">Gráfico de velas</strong>
+                  <span id="radar-chart-subtitle"></span>
+                </div>
+                <span class="radar-chart-hint">Pasa el cursor o enfoca una vela para ver sus datos</span>
+              </figcaption>
+              <div class="radar-chart-viewport">
+                <svg
+                  class="radar-chart-svg"
+                  id="radar-chart-svg"
+                  viewBox="0 0 1080 420"
+                  role="img"
+                  aria-label="Gráfico de velas del mercado analizado"
+                  preserveAspectRatio="xMidYMid meet"
+                ></svg>
+              </div>
+              <div class="radar-chart-legend" id="radar-chart-legend" aria-label="Leyenda del gráfico"></div>
+              <p class="radar-chart-guidance" id="radar-chart-guidance" hidden></p>
+              <p class="radar-chart-readout" id="radar-chart-readout" role="status" aria-live="polite">
+                Selecciona una vela para consultar apertura, máximo, mínimo y cierre.
+              </p>
+            </figure>
+            <div class="radar-results" id="radar-results" aria-live="polite" hidden>
+              <div class="radar-signal-heading">
+                <div>
+                  <p class="eyebrow">DIRECCIÓN SUGERIDA · <span id="radar-market-label"></span></p>
+                  <strong class="radar-direction" id="radar-direction"></strong>
+                </div>
+                <div class="radar-probability">
+                  <span>Probabilidad estimada</span>
+                  <strong id="radar-probability">50%</strong>
+                  <small id="radar-sample-size">Basada en 0 operaciones cerradas</small>
+                </div>
+              </div>
+              <p class="radar-warning">
+                Espera el retroceso a la zona POI / Order Block. No persigas el precio ni tomes esta alerta como una orden.
+              </p>
+              <dl class="radar-levels">
+                <div>
+                  <dt>Punto de entrada sugerido · zona POI</dt>
+                  <dd id="radar-entry-zone">—</dd>
+                </div>
+                <div>
+                  <dt>Stop Loss técnico · invalidez</dt>
+                  <dd class="negative-text" id="radar-stop-loss">—</dd>
+                </div>
+                <div>
+                  <dt>Take Profit conservador · referencia</dt>
+                  <dd class="positive-text" id="radar-take-profit">—</dd>
+                </div>
+                <div>
+                  <dt>Proyección de extensión · no garantizada</dt>
+                  <dd id="radar-extension">—</dd>
+                </div>
+              </dl>
+              <p class="radar-projection" id="radar-projection"></p>
+              <details class="radar-learning">
+                <summary id="radar-pattern-title">¿Qué patrón detectó?</summary>
+                <p id="radar-pattern-explanation"></p>
+              </details>
+              <p class="radar-disclaimer">
+                Estimación orientativa, no asesoramiento financiero. El historial puede ser pequeño y no predice resultados futuros.
+                Verifica el contexto, las comisiones y el riesgo antes de decidir.
+              </p>
+            </div>
+          </section>
+
+          <section class="card futures-card" id="futures-radar" aria-labelledby="futures-title">
+            <div class="futures-header">
+              <div>
+                <p class="eyebrow">MÁXIMA EXIGENCIA · SIN EJECUCIÓN AUTOMÁTICA</p>
+                <h2 id="futures-title">Futuros · Modo Francotirador</h2>
+                <p class="section-description">
+                  Solo analiza velas cerradas de 1h/4h. Exige CHoCH confirmado, Order Block claro y confluencia alta; sin señal, no hay operación.
+                </p>
+              </div>
+              <span class="futures-badge"><span aria-hidden="true"></span> FILTRO ≥ 80</span>
+            </div>
+            <form class="futures-controls" id="futures-form">
+              <div>
+                <label class="field-label" for="futures-symbol">Par de futuros (USDT)</label>
+                <input
+                  class="text-input"
+                  id="futures-symbol"
+                  type="text"
+                  maxlength="20"
+                  value="BTCUSDT"
+                  autocomplete="off"
+                  required
+                />
+              </div>
+              <div>
+                <label class="field-label" for="futures-timeframe">Temporalidad permitida</label>
+                <select class="text-input" id="futures-timeframe">
+                  <option value="1h" selected>1 hora</option>
+                  <option value="4h">4 horas</option>
+                </select>
+              </div>
+              <button class="button button-primary futures-submit" id="futures-submit" type="submit">
+                Analizar futuros
+              </button>
+            </form>
+            <p class="futures-source-note">
+              Datos públicos de Binance USDⓈ-M Futures · lectura manual · solo velas cerradas.
+            </p>
+            <p class="futures-rest-state" id="futures-status" role="status" aria-live="polite">
+              Modo Francotirador Activo: Esperando configuración de alta probabilidad. Sin ruido.
+            </p>
+            <figure
+              class="radar-chart futures-chart"
+              id="futures-chart"
+              aria-labelledby="futures-chart-title"
+              hidden
+            >
+              <figcaption class="radar-chart-caption">
+                <div>
+                  <strong id="futures-chart-title">Gráfico de velas USDⓈ-M</strong>
+                  <span id="futures-chart-subtitle"></span>
+                </div>
+                <span class="radar-chart-hint">Pasa el cursor o enfoca una vela para ver sus datos</span>
+              </figcaption>
+              <div class="radar-chart-viewport">
+                <svg
+                  class="radar-chart-svg"
+                  id="futures-chart-svg"
+                  viewBox="0 0 1080 420"
+                  role="img"
+                  aria-label="Gráfico de velas de Binance USDⓈ-M Futures"
+                  preserveAspectRatio="xMidYMid meet"
+                ></svg>
+              </div>
+              <div
+                class="radar-chart-legend"
+                id="futures-chart-legend"
+                aria-label="Leyenda del gráfico de futuros"
+              ></div>
+              <p class="radar-chart-guidance" id="futures-chart-guidance" hidden></p>
+              <p
+                class="radar-chart-readout"
+                id="futures-chart-readout"
+                role="status"
+                aria-live="polite"
+              >
+                Selecciona una vela para consultar apertura, máximo, mínimo y cierre.
+              </p>
+            </figure>
+            <div class="futures-signal" id="futures-signal" aria-live="polite" hidden>
+              <div class="futures-signal-heading">
+                <div>
+                  <p class="eyebrow">CONFIGURACIÓN DETECTADA · <span id="futures-market-label"></span></p>
+                  <strong class="futures-direction" id="futures-direction"></strong>
+                </div>
+                <div class="futures-score">
+                  <span>Puntaje de confluencia</span>
+                  <strong id="futures-score">—</strong>
+                  <small id="futures-score-detail">Filtro mínimo: 80/100</small>
+                </div>
+              </div>
+              <dl class="futures-levels">
+                <div>
+                  <dt>Zona POI · Order Block</dt>
+                  <dd id="futures-entry">—</dd>
+                </div>
+                <div>
+                  <dt>Stop técnico · invalidez</dt>
+                  <dd class="negative-text" id="futures-stop">—</dd>
+                </div>
+                <div>
+                  <dt>Take Profit de referencia</dt>
+                  <dd class="positive-text" id="futures-take-profit">—</dd>
+                </div>
+                <div>
+                  <dt>Distancia al stop</dt>
+                  <dd id="futures-stop-distance">—</dd>
+                </div>
+              </dl>
+              <p class="futures-leverage-note" id="futures-leverage-note"></p>
+              <p class="futures-disclaimer">
+                Puntaje heurístico de confluencia, no probabilidad estadística de ganar. El apalancamiento amplifica pérdidas y liquidación.
+                Verifica margen, comisiones, funding y reglas del exchange; nunca es una instrucción para abrir una posición.
+              </p>
+            </div>
+          </section>
+
+          <section class="card discord-settings" aria-labelledby="discord-title" id="discord-settings">
+            <div class="discord-settings-header">
+              <div>
+                <p class="eyebrow">NOTIFICACIONES · CONFIGURACIÓN LOCAL</p>
+                <h2 id="discord-title">Alertas del búnker en Discord</h2>
+                <p class="section-description">
+                  Configura canales separados: el Radar General envía sus señales detectadas y el
+                  Francotirador solo notifica configuraciones con puntaje de 80/100 o superior.
+                  Las simulaciones nunca notifican.
+                </p>
+              </div>
+              <span class="discord-mark" aria-hidden="true">D</span>
+            </div>
+            <div class="discord-webhook-grid">
+              <article class="discord-webhook-channel discord-webhook-channel-radar">
+                <h3>Oraculo · Radar General</h3>
+                <p>Alertas del radar de mercado cuando detecta una configuración.</p>
+                <form class="discord-webhook-form" id="discord-radar-webhook-form">
+                  <div class="discord-webhook-field">
+                    <label class="field-label" for="discord-radar-webhook-url">
+                      URL Webhook Radar General
+                    </label>
+                    <input
+                      class="text-input"
+                      id="discord-radar-webhook-url"
+                      type="password"
+                      inputmode="url"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      spellcheck="false"
+                      aria-describedby="discord-webhook-note"
+                      placeholder="https://discord.com/api/webhooks/…"
+                    />
+                  </div>
+                  <div class="discord-webhook-actions">
+                    <button class="button button-primary discord-save-button" type="submit">
+                      Guardar Radar
+                    </button>
+                    <button
+                      class="button button-secondary discord-test-button"
+                      id="discord-radar-webhook-test"
+                      type="button"
+                    >
+                      Probar Radar
+                    </button>
+                  </div>
+                </form>
+                <p
+                  class="discord-webhook-status"
+                  id="discord-radar-webhook-status"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+              </div>
+              <article class="discord-webhook-channel discord-webhook-channel-futures">
+                <h3>Oraculo Sniper · Modo Francotirador</h3>
+                <p>Solo señales de futuros con puntaje de confluencia ≥ 80/100.</p>
+                <form class="discord-webhook-form" id="discord-futures-webhook-form">
+                  <div class="discord-webhook-field">
+                    <label class="field-label" for="discord-futures-webhook-url">
+                      URL Webhook Francotirador
+                    </label>
+                    <input
+                      class="text-input"
+                      id="discord-futures-webhook-url"
+                      type="password"
+                      inputmode="url"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      spellcheck="false"
+                      aria-describedby="discord-webhook-note"
+                      placeholder="https://discord.com/api/webhooks/…"
+                    />
+                  </div>
+                  <div class="discord-webhook-actions">
+                    <button class="button button-primary discord-save-button" type="submit">
+                      Guardar Francotirador
+                    </button>
+                    <button
+                      class="button button-secondary discord-test-button"
+                      id="discord-futures-webhook-test"
+                      type="button"
+                    >
+                      Probar Francotirador
+                    </button>
+                  </div>
+                </form>
+                <p
+                  class="discord-webhook-status"
+                  id="discord-futures-webhook-status"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+              </div>
+            </div>
+            <p class="discord-webhook-note" id="discord-webhook-note">
+              Las URLs son credenciales: se ocultan y se guardan en localStorage de este navegador
+              (sin cifrar). No las compartas; al vaciar un campo y guardarlo se desactiva ese canal.
+            </p>
+          </section>
+
+          <div class="content-grid">
+            <section class="card panel-card" aria-labelledby="risk-title" id="risk-calculator">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">PLANIFICA ANTES DE ENTRAR</p>
+                  <h2 id="risk-title">Calculadora de riesgo</h2>
+                </div>
+                <span class="section-icon" aria-hidden="true">⌁</span>
+              </div>
+              <form id="risk-form" class="form-stack">
+                <label class="field-label" for="trade-direction">Dirección</label>
+                <select id="trade-direction" class="text-input">
+                  <option value="long">Long</option>
+                  <option value="short">Short</option>
+                </select>
+
+                <label class="field-label" for="entry-price">Precio de entrada</label>
+                <div class="input-with-suffix">
+                  <input
+                    id="entry-price"
+                    class="text-input"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Ej. 67250.00"
+                    required
+                  />
+                  <span>USDT</span>
+                </div>
+
+                <div>
+                  <label class="field-label" for="risk-percent">Riesgo de la cuenta</label>
+                  <div class="input-with-suffix">
+                    <input
+                      id="risk-percent"
+                      class="text-input"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value="1"
+                      required
+                    />
+                    <span>%</span>
+                  </div>
+                  <p class="risk-guidance">Rango recomendado: 1%–3% por operación.</p>
+                </div>
+
+                <div class="field-row">
+                  <div>
+                    <label class="field-label" for="take-profit">Take Profit</label>
+                    <div class="input-with-suffix">
+                      <input
+                        id="take-profit"
+                        class="text-input"
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="5"
+                        required
+                      />
+                      <span>%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="field-label" for="stop-loss">Stop Loss</label>
+                    <div class="input-with-suffix">
+                      <input
+                        id="stop-loss"
+                        class="text-input"
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="2"
+                        required
+                      />
+                      <span>%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button class="button button-primary full-width" type="submit">
+                  Calcular niveles
+                </button>
+              </form>
+              <div class="risk-results" id="risk-results" aria-live="polite" hidden>
+                <div class="result-row">
+                  <span>Precio objetivo</span>
+                  <strong class="positive-text" id="take-profit-price">—</strong>
+                </div>
+                <div class="result-row">
+                  <span>Precio stop</span>
+                  <strong class="negative-text" id="stop-loss-price">—</strong>
+                </div>
+                <div class="result-row risk-amount-row">
+                  <span>Riesgo monetario sobre el capital actual</span>
+                  <strong id="risk-amount">$0.00</strong>
+                </div>
+              </div>
+              <p class="risk-range-alert" id="risk-range-alert" role="status" aria-live="polite" hidden></p>
+              <p class="form-error" id="risk-error" role="alert"></p>
+              <p class="risk-smc-reminder" id="risk-smc-reminder" role="status"></p>
+              <p class="execution-reminder" id="execution-reminder" role="status"></p>
+              <p class="panel-note">Cálculo de niveles de precio. No incluye apalancamiento ni comisiones.</p>
+            </section>
+
+            <section class="card panel-card capital-panel" aria-labelledby="capital-title">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">CONFIGURACIÓN</p>
+                  <h2 id="capital-title">Capital base</h2>
+                </div>
+                <span class="section-icon" aria-hidden="true">$</span>
+              </div>
+              <p class="section-description">
+                Define tu capital inicial. El capital actual se calcula sumando las operaciones registradas.
+              </p>
+              <form id="capital-form" class="form-stack">
+                <label class="field-label" for="base-capital">Capital inicial (USDT)</label>
+                <div class="input-with-suffix">
+                  <input
+                    id="base-capital"
+                    class="text-input"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Ej. 1000"
+                    required
+                  />
+                  <span>USDT</span>
+                </div>
+                <button class="button button-secondary full-width" type="submit">
+                  Guardar capital base
+                </button>
+              </form>
+              <p class="form-error" id="capital-error" role="alert"></p>
+              <p class="saved-message" id="capital-saved" role="status" aria-live="polite"></p>
+            </section>
+          </div>
+
+          <section class="card log-card" id="trading-log" aria-labelledby="log-title">
+            <div class="log-header">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">REVISA, APRENDE, MEJORA</p>
+                  <h2 id="log-title">Diario de operaciones</h2>
+                </div>
+              </div>
+              <span class="trade-total" id="log-trade-count">0 operaciones</span>
+            </div>
+
+            <form id="trade-form" class="trade-form">
+              <div class="trade-form-grid">
+                <div>
+                  <label class="field-label" for="trade-pair">Par Spot (ACTIVO/USDT)</label>
+                  <input
+                    id="trade-pair"
+                    class="text-input"
+                    type="text"
+                    maxlength="24"
+                    placeholder="Ej. BTC/USDT"
+                    required
+                  />
+                  <p class="pair-format-hint">Formato de cotización: ACTIVO/USDT</p>
+                </div>
+                <div>
+                  <label class="field-label" for="trade-pnl">PnL realizado</label>
+                  <div class="input-with-suffix">
+                    <input
+                      id="trade-pnl"
+                      class="text-input"
+                      type="number"
+                      step="any"
+                      placeholder="Ej. 42.50 o -18"
+                      required
+                    />
+                    <span>USDT</span>
+                  </div>
+                </div>
+                <div>
+                  <label class="field-label" for="trade-pattern">Categoría / patrón</label>
+                  <select id="trade-pattern" class="text-input" required>
+                    <option value="" selected disabled>Selecciona un patrón</option>
+                    <option value="Agotamiento de vela (Amague)">Agotamiento de vela (Amague)</option>
+                    <option value="Martillo (Rechazo comprador)">Martillo (Rechazo comprador)</option>
+                    <option value="Martillo Invertido (Rechazo vendedor)">Martillo Invertido (Rechazo vendedor)</option>
+                    <option value="Doji (Indecisión)">Doji (Indecisión)</option>
+                    <option value="Vela Envolvente (Fuerza)">Vela Envolvente (Fuerza)</option>
+                    <option value="Equal Highs (Doble Techo / Resistencia)">Equal Highs (Doble Techo / Resistencia)</option>
+                    <option value="Equal Lows (Doble Piso / Soporte)">Equal Lows (Doble Piso / Soporte)</option>
+                    <option value="Order Block (OB)">Order Block (OB)</option>
+                    <option value="Imbalance / Ineficiencia">Imbalance / Ineficiencia</option>
+                    <option value="BOS (Quiebre con Cuerpo)">BOS (Quiebre con Cuerpo)</option>
+                    <option value="OB + Imbalance + BOS">OB + Imbalance + BOS</option>
+                    <option value="CHoCH (Cambio de Carácter) + POI">CHoCH (Cambio de Carácter) + POI</option>
+                    <option value="Order Block Decisional">Order Block Decisional</option>
+                    <option value="Order Block Extremo">Order Block Extremo</option>
+                    <option value="Rebote Directo en POI">Rebote Directo en POI</option>
+                    <option value="Soporte 15m">Soporte 15m</option>
+                    <option value="Resistencia clave">Resistencia clave</option>
+                    <option value="Ruptura (Breakout)">Ruptura (Breakout)</option>
+                  </select>
+                  <p class="pattern-guide" id="pattern-guide" role="status" aria-live="polite" hidden></p>
+                </div>
+                <div>
+                  <label class="field-label" for="trade-structure">Estructura</label>
+                  <select id="trade-structure" class="text-input" required>
+                    <option value="" selected disabled>Selecciona una estructura</option>
+                    <option value="Tendencia Alcista (Búsqueda de retroceso)">Tendencia Alcista (Búsqueda de retroceso)</option>
+                    <option value="Tendencia Bajista">Tendencia Bajista</option>
+                    <option value="Rango Lateral">Rango Lateral</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="trade-style">Estilo</label>
+                  <select id="trade-style" class="text-input">
+                    <option value="" selected>Selecciona un estilo (opcional)</option>
+                    <option value="Scalping">Scalping</option>
+                    <option value="Intradía">Intradía</option>
+                    <option value="Swing">Swing</option>
+                    <option value="Hold">Hold</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="trade-emotion">Estado emocional (opcional)</label>
+                  <select id="trade-emotion" class="text-input">
+                    <option value="" selected>Registra cómo te sientes</option>
+                    <option value="Disciplinado">Disciplinado</option>
+                    <option value="Ansioso">Ansioso</option>
+                    <option value="Fomo">Fomo</option>
+                    <option value="Paciente">Paciente</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="trade-news-context">Contexto de noticias</label>
+                  <select id="trade-news-context" class="text-input" required>
+                    <option value="" selected disabled>Selecciona el contexto actual</option>
+                    <option value="Mercado Tranquilo">Mercado Tranquilo</option>
+                    <option value="Alta Volatilidad por Noticia (Alto Impacto)">Alta Volatilidad por Noticia (Alto Impacto)</option>
+                    <option value="Fuera por Calendario Económico">Fuera por Calendario Económico</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="trade-execution-type">Tipo de Ejecución</label>
+                  <select id="trade-execution-type" class="text-input" required>
+                    <option value="" selected disabled>Selecciona el tipo de ejecución</option>
+                    <option value="Orden Límite (Precio programado)">Orden Límite (Precio programado)</option>
+                    <option value="Orden de Mercado (Entrada inmediata)">Orden de Mercado (Entrada inmediata)</option>
+                  </select>
+                </div>
+                <label class="trade-check-field market-oco-check" id="market-oco-field" for="trade-market-oco" hidden>
+                  <input id="trade-market-oco" type="checkbox" />
+                  <span>Precio promedio real anotado y órdenes OCO de protección configuradas en el exchange</span>
+                </label>
+                <label class="trade-check-field" for="trade-new-asset">
+                  <input id="trade-new-asset" type="checkbox" />
+                  <span>¿Es un activo nuevo? Validar fundamentos antes de operar.</span>
+                </label>
+                <fieldset class="fundamental-checklist" id="fundamental-checklist" hidden>
+                  <legend>Checklist fundamental para nuevos activos</legend>
+                  <p>Confirma los tres criterios para continuar con el registro.</p>
+                  <label class="trade-check-field" for="fundamental-utility">
+                    <input id="fundamental-utility" type="checkbox" />
+                    <span>Utilidad Real</span>
+                  </label>
+                  <label class="trade-check-field" for="fundamental-supply">
+                    <input id="fundamental-supply" type="checkbox" />
+                    <span>Capitalización y Oferta</span>
+                  </label>
+                  <label class="trade-check-field" for="fundamental-network">
+                    <input id="fundamental-network" type="checkbox" />
+                    <span>Estructura de Red</span>
+                  </label>
+                </fieldset>
+                <div class="notes-field">
+                  <label class="field-label" for="trade-notes">Notas técnicas</label>
+                  <input
+                    id="trade-notes"
+                    class="text-input"
+                    type="text"
+                    maxlength="500"
+                    placeholder="Velas, amagues, contexto de entrada..."
+                  />
+                </div>
+                <label class="trade-check-field" for="trade-plan-respected">
+                  <input id="trade-plan-respected" type="checkbox" />
+                  <span>¿Se respetó el plan de trading y las reglas de salida?</span>
+                </label>
+                <button class="button button-primary add-trade-button" type="submit">
+                  <span aria-hidden="true">＋</span> Añadir
+                </button>
+              </div>
+              <p class="form-error" id="trade-error" role="alert"></p>
+            </form>
+
+            <aside class="daily-trade-alert" id="daily-trade-alert" role="alert" hidden>
+              <span class="daily-trade-alert-icon" aria-hidden="true">!</span>
+              <p>🚨 ALERTA DE PSICOTRADING: Has alcanzado el límite diario sugerido de 3 operaciones. Recuerda: Más tiempo de análisis, menos de ejecución.</p>
+            </aside>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Par</th>
+                    <th scope="col">Patrón</th>
+                    <th scope="col">Estructura</th>
+                    <th scope="col">Estilo</th>
+                    <th scope="col">Estado emocional</th>
+                    <th scope="col">Plan respetado</th>
+                    <th scope="col">Contexto noticias</th>
+                    <th scope="col">Tipo de ejecución</th>
+                    <th scope="col">OCO verificado</th>
+                    <th scope="col">Checklist fundamental</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">PnL (USDT)</th>
+                    <th scope="col">Notas técnicas</th>
+                    <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                  </tr>
+                </thead>
+                <tbody id="trade-list"></tbody>
+              </table>
+              <div class="empty-state" id="empty-state">
+                <span class="empty-icon" aria-hidden="true">▤</span>
+                <strong>Aún no hay operaciones</strong>
+                <span>Registra tu primera operación para empezar a medir tu rendimiento.</span>
+              </div>
+            </div>
+          </section>
+          <p class="storage-error" id="storage-error" role="alert" aria-live="assertive"></p>
+          <footer class="page-footer">
+            ORÁCULO <span>·</span> Menos es más: Espera pacientemente a que el precio llegue a tu zona de interés (POI) y nunca persigas el mercado.
+          </footer>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
