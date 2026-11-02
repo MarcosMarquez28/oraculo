@@ -37,3 +37,6 @@ Spot signals go to the Radar webhook. Futures alerts are sent only when the
 Order Block and CHoCH filters pass and the confluence score is at least 80/100.
 The service sends alerts only; it does not place orders. Duplicate alerts are
 suppressed in memory for the lifetime of the running process.
+
+The browser simulator and the scheduled scanner use the same detection and risk
+calculations from `strategy.js`; simulated signals are local and never send alerts.

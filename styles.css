@@ -1561,6 +1561,31 @@ h1 {
   stroke-dasharray: 4 3;
 }
 
+.radar-chart-signal-marker {
+  stroke: rgb(232 190 96 / 45%);
+  stroke-dasharray: 3 4;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.radar-chart-signal-label {
+  font-family: "DM Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #0c1116;
+  stroke-linejoin: round;
+  stroke-width: 3px;
+}
+
+.radar-chart-signal-long {
+  fill: #27d99a;
+}
+
+.radar-chart-signal-short {
+  fill: #ff657a;
+}
+
 .radar-chart-edge-marker {
   stroke-width: 1.5;
 }
@@ -1616,9 +1641,23 @@ h1 {
   vector-effect: non-scaling-stroke;
 }
 
+.radar-chart-level-label {
+  font-family: "DM Sans", sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #0c1116;
+  stroke-linejoin: round;
+  stroke-width: 3px;
+}
+
 .radar-chart-stop {
   color: #ff657a;
   stroke: #ff657a;
+}
+
+.radar-chart-level-label.radar-chart-stop {
+  fill: #ff657a;
 }
 
 .radar-chart-take-profit {
@@ -1626,10 +1665,18 @@ h1 {
   stroke: #27d99a;
 }
 
+.radar-chart-level-label.radar-chart-take-profit {
+  fill: #27d99a;
+}
+
 .radar-chart-extension {
   color: #3dd9eb;
   stroke: #3dd9eb;
   stroke-dasharray: 4 4;
+}
+
+.radar-chart-level-label.radar-chart-extension {
+  fill: #3dd9eb;
 }
 
 .radar-chart-legend {

@@ -1,5 +1,11 @@
 "use strict";
 
+const {
+  FUTURES_MINIMUM_SCORE,
+  analyzeOpportunity,
+  analyzeFuturesSetup: analyzeSharedFuturesSetup,
+} = globalThis.OraculoStrategy;
+
 const STORAGE_KEYS = {
   baseCapital: "oraculo.baseCapital",
   trades: "oraculo.trades",
@@ -48,7 +54,6 @@ const PATTERN_GUIDES = {
 
 const DAILY_TRADE_LIMIT = 3;
 const SESSION_TRADE_LIMIT = 2;
-const FUTURES_MINIMUM_SCORE = 80;
 const DISCORD_ALERT_THRESHOLD = 80;
 const MAX_AUTO_SCAN_SYMBOLS = 10;
 const AUTO_SCAN_INTERVALS = [1, 5, 15];
@@ -866,98 +871,6 @@ function normalizeCandle(candle) {
   return { time, open, high, low, close, closeTime, isClosed };
 }
 
-function analyzeOpportunity(candles) {
-  const hasClosureMetadata = candles.some((candle) => candle.isClosed !== undefined);
-  const closedCandles = hasClosureMetadata
-    ? candles.filter((candle) => candle.isClosed !== false)
-    : candles.slice(0, -1);
-  if (closedCandles.length < 22) {
-    return { reason: "Se necesitan al menos 22 velas cerradas para evaluar estructura e impulso." };
-  }
-
-  const impulseIndex = closedCandles.length - 1;
-  const impulse = closedCandles[impulseIndex];
-  const referenceBodies = closedCandles
-    .slice(impulseIndex - 20, impulseIndex)
-    .map((candle) => Math.abs(candle.close - candle.open))
-    .sort((first, second) => first - second);
-  const medianBody = (referenceBodies[9] + referenceBodies[10]) / 2;
-  const impulseBody = Math.abs(impulse.close - impulse.open);
-  if (medianBody <= 0 || impulseBody < medianBody * 1.5 || impulse.close === impulse.open) {
-    return { reason: "No se detectó un impulso confirmado con suficiente fuerza en la última vela cerrada." };
-  }
-
-  const direction = impulse.close > impulse.open ? 1 : -1;
-  const structureStart = Math.max(0, impulseIndex - 14);
-  const structureCandles = closedCandles.slice(structureStart, impulseIndex - 3);
-  if (structureCandles.length < 3) {
-    return { reason: "Aún no hay suficientes velas previas para confirmar un cambio de estructura." };
-  }
-
-  const structureBoundary =
-    direction === 1
-      ? Math.max(...structureCandles.map((candle) => candle.high))
-      : Math.min(...structureCandles.map((candle) => candle.low));
-  const confirmsStructure =
-    direction === 1 ? impulse.close > structureBoundary : impulse.close < structureBoundary;
-  if (!confirmsStructure) {
-    return { reason: "Hay movimiento, pero el cierre no confirmó un cambio de estructura (CHoCH)." };
-  }
-
-  let orderBlock = null;
-  let orderBlockIndex = -1;
-  for (let index = impulseIndex - 1; index >= Math.max(0, impulseIndex - 10); index -= 1) {
-    const candle = closedCandles[index];
-    const isOpposingCandle =
-      direction === 1 ? candle.close < candle.open : candle.close > candle.open;
-    if (isOpposingCandle) {
-      orderBlock = candle;
-      orderBlockIndex = index;
-      break;
-    }
-  }
-  if (!orderBlock) {
-    return { reason: "Se confirmó el impulso, pero no se encontró una vela contraria para delimitar el POI." };
-  }
-
-  const candleTwoBack = closedCandles[impulseIndex - 2];
-  const hasImbalance =
-    direction === 1
-      ? impulse.low > candleTwoBack.high
-      : impulse.high < candleTwoBack.low;
-  const entryLow = orderBlock.low;
-  const entryHigh = orderBlock.high;
-  const orderBlockRange = orderBlock.high - orderBlock.low;
-  const orderBlockBodyRatio =
-    orderBlockRange > 0
-      ? Math.abs(orderBlock.close - orderBlock.open) / orderBlockRange
-      : 0;
-  const orderBlockBarsAgo = impulseIndex - orderBlockIndex;
-  const entry = (entryLow + entryHigh) / 2;
-  const zoneBuffer = Math.max(entryHigh - entryLow, entry * 0.0001) * 0.1;
-  const stopLoss = direction === 1 ? entryLow - zoneBuffer : entryHigh + zoneBuffer;
-  const riskDistance = Math.abs(entry - stopLoss);
-  const takeProfit = direction === 1
-    ? Math.max(entry + riskDistance * 1.5, impulse.close + impulseBody * 0.25)
-    : Math.min(entry - riskDistance * 1.5, impulse.close - impulseBody * 0.25);
-  const extension = takeProfit + direction * impulseBody * 0.618;
-
-  return {
-    direction,
-    entryLow,
-    entryHigh,
-    orderBlockIndex,
-    orderBlockBodyRatio,
-    orderBlockBarsAgo,
-    impulseBodyRatio: medianBody > 0 ? impulseBody / medianBody : 0,
-    stopLoss,
-    takeProfit,
-    extension,
-    structureBoundary,
-    hasImbalance,
-  };
-}
-
 function analyzeFuturesSetup(candles, timeframe) {
   if (!["1h", "4h"].includes(timeframe)) {
     return {
@@ -966,50 +879,7 @@ function analyzeFuturesSetup(candles, timeframe) {
       reason: "El modo francotirador solo admite temporalidades de 1h y 4h.",
     };
   }
-
-  const setup = analyzeOpportunity(candles);
-  if (!setup.direction) {
-    return { ...setup, active: false, score: 0 };
-  }
-
-  const clearOrderBlock =
-    setup.orderBlockBodyRatio >= 0.35 && setup.orderBlockBarsAgo <= 5;
-  const entry = (setup.entryLow + setup.entryHigh) / 2;
-  const riskDistance = Math.abs(entry - setup.stopLoss);
-  const rewardDistance = Math.abs(setup.takeProfit - entry);
-  const rewardRiskRatio = riskDistance > 0 ? rewardDistance / riskDistance : 0;
-  const impulseStrengthScore = Math.min(
-    20,
-    Math.max(0, ((setup.impulseBodyRatio - 1.5) / 1.5) * 20),
-  );
-  const score = Math.round(
-    35 +
-      (clearOrderBlock ? 25 : 0) +
-      (setup.hasImbalance ? 15 : 0) +
-      impulseStrengthScore +
-      (rewardRiskRatio >= 1.5 ? 5 : 0),
-  );
-  const active =
-    clearOrderBlock &&
-    setup.impulseBodyRatio >= 1.5 &&
-    score >= FUTURES_MINIMUM_SCORE;
-
-  return {
-    ...setup,
-    active,
-    clearOrderBlock,
-    impulseStrengthScore,
-    rewardRiskRatio,
-    score,
-    minimumScore: FUTURES_MINIMUM_SCORE,
-    reason: active
-      ? ""
-      : !clearOrderBlock
-        ? "El Order Block no cumple los criterios de claridad del filtro."
-        : score < FUTURES_MINIMUM_SCORE
-          ? `La confluencia obtuvo ${score}/100; el filtro exige al menos ${FUTURES_MINIMUM_SCORE}/100.`
-          : "El impulso no alcanza la fuerza mínima del filtro.",
-  };
+  return analyzeSharedFuturesSetup(candles);
 }
 
 function analyzeFuturesCandles(candles, timeframe) {
@@ -1217,16 +1087,29 @@ function renderRadarChart(candles, signal, metadata, chartView = radarChartView,
     const orderBlockX = xForIndex(signal.orderBlockIndex);
     const zoneTop = yForPrice(signal.entryHigh);
     const zoneBottom = yForPrice(signal.entryLow);
+    const poiZone = createRadarSvgElement("rect", {
+      x: orderBlockX,
+      y: zoneTop,
+      width: Math.max(1, plot.right - orderBlockX),
+      height: Math.max(1, zoneBottom - zoneTop),
+      class: signal.direction === 1 ? "radar-chart-poi-bullish" : "radar-chart-poi-bearish",
+    });
+    const poiTitle = createRadarSvgElement("title");
+    poiTitle.textContent =
+      `Zona POI / Order Block: ${formatRadarPrice(signal.entryLow)} – ${formatRadarPrice(signal.entryHigh)}`;
+    poiZone.append(poiTitle);
+    svg.append(poiZone);
+
+    const impulseX = xForIndex(signal.impulseIndex);
     svg.append(
-      createRadarSvgElement("rect", {
-        x: orderBlockX,
-        y: zoneTop,
-        width: Math.max(1, plot.right - orderBlockX),
-        height: Math.max(1, zoneBottom - zoneTop),
-        class: signal.direction === 1 ? "radar-chart-poi-bullish" : "radar-chart-poi-bearish",
+      createRadarSvgElement("line", {
+        x1: impulseX,
+        x2: impulseX,
+        y1: plot.top,
+        y2: plot.bottom,
+        class: "radar-chart-signal-marker",
       }),
     );
-
   }
 
   const candleSpacing = plotWidth / Math.max(visibleCandles.length - 1, 1);
@@ -1298,16 +1181,42 @@ function renderRadarChart(candles, signal, metadata, chartView = radarChartView,
       } else {
         svg.append(
           createRadarSvgElement("line", {
-          x1: plot.left,
-          x2: plot.right,
-          y1: y,
-          y2: y,
-          class: `radar-chart-level ${level.className}`,
+            x1: plot.left,
+            x2: plot.right,
+            y1: y,
+            y2: y,
+            class: `radar-chart-level ${level.className}`,
           }),
         );
       }
+      const levelLabel = createRadarSvgElement("text", {
+        x: plot.right + 88,
+        y: y + 3,
+        class: `radar-chart-level-label ${level.className}`,
+      });
+      levelLabel.textContent =
+        `${level.label} · ${radarPriceFormatter.format(level.price)} USDT`;
+      svg.append(levelLabel);
     }
 
+    const impulse = visibleCandles[signal.impulseIndex - firstVisibleIndex];
+    if (impulse) {
+      const impulseX = xForIndex(signal.impulseIndex);
+      const anchor = impulseX < (plot.left + plot.right) / 2 ? "start" : "end";
+      const labelX = impulseX + (anchor === "start" ? 8 : -8);
+      const rawLabelY = signal.direction === 1
+        ? yForPrice(impulse.high) - 8
+        : yForPrice(impulse.low) + 16;
+      const labelY = Math.max(plot.top + 12, Math.min(plot.bottom - 3, rawLabelY));
+      const signalLabel = createRadarSvgElement("text", {
+        x: labelX,
+        y: labelY,
+        "text-anchor": anchor,
+        class: `radar-chart-signal-label ${signal.direction === 1 ? "radar-chart-signal-long" : "radar-chart-signal-short"}`,
+      });
+      signalLabel.textContent = signal.direction === 1 ? "ALERTA LONG" : "ALERTA SHORT";
+      svg.append(signalLabel);
+    }
   }
 
   for (let tick = 0; tick <= 4; tick += 1) {
